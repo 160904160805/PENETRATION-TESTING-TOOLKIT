@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PenTest Toolkit - Port Scanner & Brute Forcer</title>
+  <style>
+    body {
+      background-color: #0d1117;
+      color: #c9d1d9;
+      font-family: Consolas, monospace;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    h1, h2 {
+      color: #58a6ff;
+      margin-bottom: 0.5em;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 15px;
+      margin-bottom: 5px;
+    }
+    input[type="text"],
+    input[type="file"],
+    input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      font-size: 1rem;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 15px;
+      background-color: #238636;
+      border: none;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: background-color 0.2s ease;
+    }
+    button:hover {
+      background-color: #2ea043;
+    }
+    pre {
+      background: #161b22;
+      border: 1px solid #30363d;
+      padding: 15px;
+      margin-top: 15px;
+      max-height: 250px;
+      overflow-y: auto;
+      border-radius: 5px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    form {
+      margin-bottom: 40px;
+    }
+    /* Tabs */
+    .tab-buttons {
+      margin-bottom: 20px;
+    }
+    .tab-buttons button {
+      background: #161b22;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 10px 20px;
+      cursor: pointer;
+      margin-right: 5px;
+      border-radius: 5px 5px 0 0;
+      font-weight: bold;
+    }
+    .tab-buttons button.active {
+      background-color: #238636;
+      color: white;
+    }
+    .tab-content {
+      border: 1px solid #30363d;
+      padding: 20px;
+      border-radius: 0 5px 5px 5px;
+      background: #161b22;
+    }
+    #loadingScan, #loadingBrute {
+      display: none;
+      margin-top: 10px;
+      font-weight: bold;
+      color: #58a6ff;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🛠️ PenTest Toolkit</h1>
+
+  <div class="tab-buttons">
+    <button id="tabScanner" class="active" onclick="showTab('scanner')">Port Scanner</button>
+    <button id="tabBrute" onclick="showTab('brute')">Brute Forcer</button>
+  </div>
+
+  <!-- Port Scanner Tab -->
+  <div id="scannerTab" class="tab-content">
+    <form id="scanForm">
+      <label for="target">Target IP or Domain:</label>
+      <input type="text" id="target" name="target" placeholder="e.g., 192.168.1.1 or scanme.nmap.org" required />
+      
+      <label for="start_port">Start Port:</label>
+      <input type="number" id="start_port" name="start_port" min="1" max="65535" value="21" required />
+      
+      <label for="end_port">End Port:</label>
+      <input type="number" id="end_port" name="end_port" min="1" max="65535" value="1024" required />
+      
+      <button type="submit">Scan Ports</button>
+    </form>
+    <div id="loadingScan">⏳ Scanning ports, please wait...</div>
+    <pre id="scanResults">[Results will appear here]</pre>
+  </div>
+
+  <!-- Brute Forcer Tab -->
+  <div id="bruteTab" class="tab-content" style="display: none;">
+    <form id="bruteForm" enctype="multipart/form-data">
+      <label for="url">Target Login URL:</label>
+      <input type="text" id="url" name="url" placeholder="e.g., http://localhost/dummy_login.php" required />
+      
+      <label for="username">Username:</label>
+      <input type="text" id="username" name="username" placeholder="admin" required />
+      
+      <label for="wordlist">Upload Wordlist (.txt):</label>
+      <input type="file" id="wordlist" name="wordlist" accept=".txt" required />
+      
+      <button type="submit">Start Brute Force</button>
+    </form>
+    <div id="loadingBrute">⏳ Running brute force, please wait...</div>
+    <pre id="bruteResults">[Brute force results will appear here]</pre>
+  </div>
+
+  <script>
+    // Tab toggling
+    function showTab(tab) {
+      const scannerTab = document.getElementById('scannerTab');
+      const bruteTab = document.getElementById('bruteTab');
+      const tabScannerBtn = document.getElementById('tabScanner');
+      const tabBruteBtn = document.getElementById('tabBrute');
+
+      if (tab === 'scanner') {
+        scannerTab.style.display = 'block';
+        bruteTab.style.display = 'none';
+        tabScannerBtn.classList.add('active');
+        tabBruteBtn.classList.remove('active');
+      } else {
+        scannerTab.style.display = 'none';
+        bruteTab.style.display = 'block';
+        tabScannerBtn.classList.remove('active');
+        tabBruteBtn.classList.add('active');
+      }
+    }
+
+    // Port Scanner submit
+    document.getElementById("scanForm").onsubmit = async function(e) {
+      e.preventDefault();
+      const loading = document.getElementById("loadingScan");
+      const resultArea = document.getElementById("scanResults");
+
+      loading.style.display = "block";
+      resultArea.textContent = "";
+
+      const formData = new FormData(this);
+      try {
+        const res = await fetch("/scan", {
+          method: "POST",
+          body: formData
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          resultArea.textContent = err[0] || "Unknown error";
+          loading.style.display = "none";
+          return;
+        }
+
+        const data = await res.json();
+        resultArea.textContent = data.length ? data.join("\n") : "[No open ports found]";
+      } catch (e) {
+        resultArea.textContent = "[Error connecting to server]";
+      }
+
+      loading.style.display = "none";
+    };
+
+    // Brute Forcer submit
+    document.getElementById("bruteForm").onsubmit = async function(e) {
+      e.preventDefault();
+      const loading = document.getElementById("loadingBrute");
+      const resultArea = document.getElementById("bruteResults");
+
+      loading.style.display = "block";
+      resultArea.textContent = "";
+
+      const formData = new FormData(this);
+      try {
+        const res = await fetch("/brute", {
+          method: "POST",
+          body: formData
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          resultArea.textContent = err[0] || "Unknown error";
+          loading.style.display = "none";
+          return;
+        }
+
+        const data = await res.json();
+        resultArea.textContent = data.length ? data.join("\n") : "[No valid credentials found]";
+      } catch (e) {
+        resultArea.textContent = "[Error connecting to server]";
+      }
+
+      loading.style.display = "none";
+    };
+  </script>
+
+</body>
+</html>
