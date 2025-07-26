@@ -1,7 +1,0 @@
-123456
-admin
-password
-secret
-secret123   
-qwerty
-qwerty123
